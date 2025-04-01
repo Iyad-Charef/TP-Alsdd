@@ -1,5 +1,5 @@
 
-/*    Hi this program was made by iyad charef fro the Tp of Alsdd, i hope you like it    */
+/* This program was created by Iyad Charef for the ALSDD project. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -149,6 +149,11 @@ void loadEmployees(const char *filename, Employee **head, Employee **tail) {
         }
 
         Employee *newEmp = (Employee *)malloc(sizeof(Employee));
+        if (!newEmp) {
+            fprintf(stderr, "Memory allocation failed for new employee.\n");
+            fclose(fp);
+            return;
+        }
         if (!newEmp) exit(1);
         memset(newEmp, 0, sizeof(Employee));
 
@@ -165,6 +170,7 @@ void loadEmployees(const char *filename, Employee **head, Employee **tail) {
             parseField(&start, ';', newEmp->returnToWorkDate);
         } else {
             strcpy(newEmp->returnToWorkDate, "");
+            start++;
         }
 
         // Parse history if present
@@ -330,12 +336,12 @@ int getPriority(const char *reason) {
         return 1;
     else if (strcmp(reason, "Occupational-Disease") == 0)
         return 2;
-    else if (strcmp(reason, "Return-to-Work") == 0 || strcmp(reason, "Pre-employement") == 0)
+    else if (strcmp(reason, "Return-to-Work") == 0 || strcmp(reason, "Pre-employment") == 0)
         return 3;
     else if (strcmp(reason, "Periodic") == 0)
         return 4;
     else
-        return 5;  // This branch should never be reached if all reasons are perfectly typed.
+        return 5;  // Default priority for unrecognized reasons.
 } 
 
 /* Insert a new consultation node into the queue + some logic to preserve priority order and FIFO order for same priority */
@@ -403,6 +409,11 @@ void loadConsultations(const char *filename, Consultation **Qhead) {
         }
         
          Consultation *cons = (Consultation*)malloc(sizeof(Consultation));
+         if (!cons) {
+             printf("Error: Memory allocation failed for consultation.\n");
+             fclose(fp);
+             return;
+         }
          if (!cons) exit(1);
          memset(cons, 0, sizeof(Consultation));
          
@@ -453,12 +464,18 @@ void processAppointment(Consultation **Qhead, Employee **Ehead, Employee **Etail
            appoint->employeeID, appoint->employeeName, appoint->time, appoint->reason);
     
      char currentDate[11];
-     printf("Enter today’s date (DD/MM/YYYY): ");
+     printf("Enter today's date (DD/MM/YYYY): ");
      scanf("%10s", currentDate);
+     flushInput();
 
-    char newReturnDate[11] = "";
+    char newReturnDate[11];
+    // Ask for new return date, if applicable 
     printf("Enter new return date (DD/MM/YYYY) or press Enter to skip: ");
     fgets(newReturnDate, sizeof(newReturnDate), stdin);
+    removeNewline(newReturnDate);
+    if (strlen(newReturnDate) == 0) {
+        strcpy(newReturnDate, ""); // Ensure it's explicitly set to an empty string
+    }
     removeNewline(newReturnDate);
 
     
@@ -469,10 +486,10 @@ void processAppointment(Consultation **Qhead, Employee **Ehead, Employee **Etail
          
          printf("Employee record updated for %s.\n", emp->fullName);
     } else {
-         if ((strcmp(appoint->reason, "Pre-employement")) == 0) {
+         if ((strcmp(appoint->reason, "Pre-employment")) == 0) {
              char history[1][30];
              strncpy(history[0], appoint->reason, 29);
-             addEmployee(Ehead, Etail,  appoint->employeeID, appoint->employeeName, 1,
+             addEmployee(Ehead, Etail, appoint->employeeID, appoint->employeeName, 1,
                          currentDate, newReturnDate, history, 1);
              printf("New employee record created for %s.\n", appoint->employeeName);
          } else {
@@ -517,12 +534,10 @@ Consultation* removeLastAppointment(Consultation **head) {
 void addNewAppointment(Consultation **Qhead, Consultation **Nhead) {
     Consultation *newApp = (Consultation*)malloc(sizeof(Consultation));
     if (!newApp) exit(1);
-    memset(newApp, 0, sizeof(Consultation));
-    
-    printf("Enter Employee ID: ");
-    fgets(newApp->employeeID, sizeof(newApp->employeeID), stdin);
-    removeNewline(newApp->employeeID);
-    flushInput(); 
+
+    printf("Enter Employee ID (8 characters): ");
+    scanf("%8s", newApp->employeeID);
+    flushInput();
     
     printf("Enter Employee Name: ");
     fgets(newApp->employeeName, sizeof(newApp->employeeName), stdin);
@@ -542,7 +557,7 @@ void addNewAppointment(Consultation **Qhead, Consultation **Nhead) {
     else if (choice == 2)
          strcpy(newApp->reason, "Occupational-Disease");
     else if (choice == 3)
-         strcpy(newApp->reason, "Pre-employement");
+         strcpy(newApp->reason, "Pre-employment");
     else {
          printf("Invalid choice. Appointment not added.\n");
          free(newApp);
@@ -666,7 +681,7 @@ void scheduleNextday(Employee *Ehead, Consultation **Nhead) {
             memset(newApp, 0, sizeof(Consultation));
             strcpy(newApp->employeeID, Ehead->id);
             strcpy(newApp->employeeName, Ehead->fullName);
-            strcpy(newApp->time, "09h00"); // still underwork, so i put a Default time to make it simpler
+            strcpy(newApp->time, "09h00"); // Default time "09h00" is used as a placeholder for simplicity in scheduling
             if (strcmp(Ehead->returnToWorkDate, tomorrow) == 0) {
                 strcpy(newApp->reason, "Return-to-Work");
             } else {
@@ -678,12 +693,12 @@ void scheduleNextday(Employee *Ehead, Consultation **Nhead) {
         }
         Ehead = Ehead->next;
     }
+    
 }
-
 /* ---------- Main Function ---------- */
 
 int main(void) {
-    printf("hello there \n");
+    printf("Welcome to the Occupational Health Appointment Management System.\n");
     Employee *Ehead = NULL, *Etail = NULL;
     loadEmployees("EmpRecords.txt", &Ehead, &Etail);
     Consultation *Qhead = NULL ;
